@@ -40,7 +40,7 @@ if ! id "$APP_USER" >/dev/null 2>&1; then
 fi
 
 $SUDO install -d -m 750 -o root -g "$APP_USER" "$ENV_DIR"
-if [ ! -f "$ENV_FILE" ]; then
+if ! $SUDO test -f "$ENV_FILE"; then
     echo "Missing VPS environment file: $ENV_FILE" >&2
     echo "Create it with TELEGRAM_BOT_TOKEN and DEEPGRAM_API_KEY before deploying." >&2
     exit 1
