@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -19,10 +20,18 @@ logger = logging.getLogger(__name__)
 
 DEEPGRAM_LISTEN_URL = "https://api.deepgram.com/v1/listen"
 DEEPGRAM_TIMEOUT = httpx.Timeout(120.0, connect=15.0)
+MIN_EXPECTED_VOICE_BYTES_PER_SECOND = 1000
 
 
 def is_voice_debug_enabled() -> bool:
     return os.getenv("VOICE_DEBUG", "").lower() in {"1", "true", "yes", "on"}
+
+
+def looks_like_empty_voice(audio_size: int, duration: Optional[int]) -> bool:
+    if not duration or duration < 2:
+        return False
+
+    return audio_size / duration < MIN_EXPECTED_VOICE_BYTES_PER_SECOND
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -115,6 +124,13 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             len(audio_bytes),
             content_type,
         )
+        if looks_like_empty_voice(len(audio_bytes), duration):
+            await status_message.edit_text(
+                "Telegram прислал почти пустую запись. "
+                "Проверьте микрофон именно в Telegram: бот получил файл, но в нем почти нет звука."
+            )
+            return
+
         transcript = await transcribe_with_deepgram(bytes(audio_bytes), content_type)
     except httpx.HTTPStatusError as exc:
         logger.exception("Deepgram returned an error")
