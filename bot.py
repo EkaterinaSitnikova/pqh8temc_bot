@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -20,18 +19,6 @@ logger = logging.getLogger(__name__)
 
 DEEPGRAM_LISTEN_URL = "https://api.deepgram.com/v1/listen"
 DEEPGRAM_TIMEOUT = httpx.Timeout(120.0, connect=15.0)
-MIN_EXPECTED_VOICE_BYTES_PER_SECOND = 1000
-
-
-def is_voice_debug_enabled() -> bool:
-    return os.getenv("VOICE_DEBUG", "").lower() in {"1", "true", "yes", "on"}
-
-
-def looks_like_empty_voice(audio_size: int, duration: Optional[int]) -> bool:
-    if not duration or duration < 2:
-        return False
-
-    return audio_size / duration < MIN_EXPECTED_VOICE_BYTES_PER_SECOND
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -73,10 +60,9 @@ async def transcribe_with_deepgram(audio: bytes, content_type: str) -> str:
     if not api_key:
         raise RuntimeError("Добавьте DEEPGRAM_API_KEY в файл .env")
 
-    language = os.getenv("DEEPGRAM_LANGUAGE", "ru")
     params = {
         "model": "nova-3-general",
-        "language": language,
+        "detect_language": "true",
         "smart_format": "true",
     }
     headers = {
@@ -112,11 +98,6 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     try:
         file = await context.bot.get_file(media.file_id)
         audio_bytes = await file.download_as_bytearray()
-        if is_voice_debug_enabled():
-            await update.message.reply_text(
-                f"Диагностика: Telegram прислал {len(audio_bytes)} байт, "
-                f"длительность {duration} сек., тип {content_type}."
-            )
         logger.info(
             "Received audio: duration=%s seconds, telegram_size=%s bytes, downloaded=%s bytes, content_type=%s",
             duration,
@@ -124,13 +105,6 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             len(audio_bytes),
             content_type,
         )
-        if looks_like_empty_voice(len(audio_bytes), duration):
-            await status_message.edit_text(
-                "Telegram прислал почти пустую запись. "
-                "Проверьте микрофон именно в Telegram: бот получил файл, но в нем почти нет звука."
-            )
-            return
-
         transcript = await transcribe_with_deepgram(bytes(audio_bytes), content_type)
     except httpx.HTTPStatusError as exc:
         logger.exception("Deepgram returned an error")
