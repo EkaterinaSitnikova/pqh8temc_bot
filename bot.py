@@ -1,6 +1,7 @@
 import logging
 import os
 
+import groq
 import httpx
 from dotenv import load_dotenv
 from telegram import Update
@@ -19,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 DEEPGRAM_LISTEN_URL = "https://api.deepgram.com/v1/listen"
 DEEPGRAM_TIMEOUT = httpx.Timeout(120.0, connect=15.0)
+
+TRANSLATE_SYSTEM_PROMPT = (
+    "You are a translator. The user will send you a voice message transcript. "
+    "Translate it into natural, conversational English as if the speaker said it themselves. "
+    "Keep the tone and intent of the original. Return only the translated text, nothing else."
+)
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -82,6 +90,23 @@ async def transcribe_with_deepgram(audio: bytes, content_type: str) -> str:
     return extract_transcript(response.json())
 
 
+async def translate_to_english(text: str) -> str:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("Добавьте GROQ_API_KEY в файл .env")
+
+    client = groq.AsyncGroq(api_key=api_key)
+    response = await client.chat.completions.create(
+        model=GROQ_MODEL,
+        max_tokens=2048,
+        messages=[
+            {"role": "system", "content": TRANSLATE_SYSTEM_PROMPT},
+            {"role": "user", "content": text},
+        ],
+    )
+    return response.choices[0].message.content.strip()
+
+
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message:
         return
@@ -130,7 +155,19 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
-    await send_transcript(status_message, transcript)
+    await status_message.edit_text("Перевожу на английский...")
+
+    try:
+        translation = await translate_to_english(transcript)
+    except Exception:
+        logger.exception("Failed to translate transcript")
+        await status_message.edit_text(
+            f"Транскрипт:\n{transcript}\n\nПеревести не удалось. Попробуйте еще раз."
+        )
+        return
+
+    combined = f"Транскрипт:\n{transcript}\n\nEnglish:\n{translation}"
+    await send_transcript(status_message, combined)
 
 
 def main() -> None:
