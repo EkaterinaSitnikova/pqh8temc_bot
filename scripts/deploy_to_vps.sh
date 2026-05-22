@@ -60,6 +60,10 @@ else
     $SUDO chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 fi
 
+if ! $SUDO git config --system --get-all safe.directory 2>/dev/null | grep -qxF "$APP_DIR"; then
+    $SUDO git config --system --add safe.directory "$APP_DIR"
+fi
+
 $SUDO -u "$APP_USER" python3 -m venv "$APP_DIR/.venv"
 $SUDO -u "$APP_USER" "$APP_DIR/.venv/bin/python" -m pip install --upgrade pip
 $SUDO -u "$APP_USER" "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"

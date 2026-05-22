@@ -63,6 +63,12 @@ ssh pqh8temc-vps "sudo journalctl -u pqh8temc-bot -n 80 --no-pager"
 ssh pqh8temc-vps "git -C /opt/pqh8temc_bot rev-parse --short HEAD"
 ```
 
+Если Git когда-нибудь ругнется на ownership репозитория, проверка через service user:
+
+```bash
+ssh pqh8temc-vps "sudo -u pqhbot git -C /opt/pqh8temc_bot rev-parse --short HEAD"
+```
+
 ## Где что лежит на VPS
 
 ```text
