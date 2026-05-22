@@ -35,3 +35,33 @@ python bot.py
 ```bash
 .venv/bin/python bot.py
 ```
+
+## VPS
+
+Бот развернут на VPS `186.246.45.66` и запускается через `systemd`.
+
+Подключение с этого Mac:
+
+```bash
+ssh pqh8temc-vps
+```
+
+Проверить сервис:
+
+```bash
+ssh pqh8temc-vps "systemctl status pqh8temc-bot --no-pager"
+```
+
+Опубликовать изменения в GitHub и выложить их на VPS:
+
+```bash
+scripts/publish_and_deploy.sh "Короткое описание изменения"
+```
+
+Выложить на VPS уже опубликованную в GitHub версию:
+
+```bash
+scripts/deploy_to_vps.sh
+```
+
+Подробно процесс описан в `docs/deployment.md`.
