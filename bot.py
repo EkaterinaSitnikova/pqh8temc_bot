@@ -60,9 +60,10 @@ async def transcribe_with_deepgram(audio: bytes, content_type: str) -> str:
     if not api_key:
         raise RuntimeError("Добавьте DEEPGRAM_API_KEY в файл .env")
 
+    language = os.getenv("DEEPGRAM_LANGUAGE", "ru")
     params = {
         "model": "nova-3-general",
-        "detect_language": "true",
+        "language": language,
         "smart_format": "true",
     }
     headers = {
@@ -92,10 +93,19 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     status_message = await update.message.reply_text("Слушаю и перевожу в текст...")
     content_type = getattr(media, "mime_type", None) or "audio/ogg"
+    duration = getattr(media, "duration", None)
+    file_size = getattr(media, "file_size", None)
 
     try:
         file = await context.bot.get_file(media.file_id)
         audio_bytes = await file.download_as_bytearray()
+        logger.info(
+            "Received audio: duration=%s seconds, telegram_size=%s bytes, downloaded=%s bytes, content_type=%s",
+            duration,
+            file_size,
+            len(audio_bytes),
+            content_type,
+        )
         transcript = await transcribe_with_deepgram(bytes(audio_bytes), content_type)
     except httpx.HTTPStatusError as exc:
         logger.exception("Deepgram returned an error")
@@ -111,7 +121,14 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     if not transcript:
-        await status_message.edit_text("Я не услышал текста в этом сообщении.")
+        logger.info(
+            "Deepgram returned an empty transcript: duration=%s seconds, downloaded=%s bytes",
+            duration,
+            len(audio_bytes),
+        )
+        await status_message.edit_text(
+            "Я получил голосовое, но не разобрал речь. Попробуйте записать чуть громче и дольше."
+        )
         return
 
     await send_transcript(status_message, transcript)
