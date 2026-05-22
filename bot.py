@@ -21,6 +21,10 @@ DEEPGRAM_LISTEN_URL = "https://api.deepgram.com/v1/listen"
 DEEPGRAM_TIMEOUT = httpx.Timeout(120.0, connect=15.0)
 
 
+def is_voice_debug_enabled() -> bool:
+    return os.getenv("VOICE_DEBUG", "").lower() in {"1", "true", "yes", "on"}
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
         await update.message.reply_text(
@@ -99,6 +103,11 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     try:
         file = await context.bot.get_file(media.file_id)
         audio_bytes = await file.download_as_bytearray()
+        if is_voice_debug_enabled():
+            await update.message.reply_text(
+                f"Диагностика: Telegram прислал {len(audio_bytes)} байт, "
+                f"длительность {duration} сек., тип {content_type}."
+            )
         logger.info(
             "Received audio: duration=%s seconds, telegram_size=%s bytes, downloaded=%s bytes, content_type=%s",
             duration,
