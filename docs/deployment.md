@@ -88,3 +88,18 @@ local files -> git commit -> git push -> VPS git pull/fetch -> restart service
 ```
 
 Пароли GitHub не нужны. На Mac уже настроен GitHub CLI, а VPS берет код из публичного репозитория.
+
+## Последняя проверка
+
+2026-05-22 проверен полный цикл:
+
+```text
+local commit -> GitHub push -> VPS fetch/reset -> systemd restart
+```
+
+После проверки:
+
+- GitHub-репозиторий публичный;
+- локальная ветка `main`, `origin/main` и checkout на VPS совпадают;
+- сервис `pqh8temc-bot` активен;
+- реальные значения из локального `.env` не найдены в Git history.

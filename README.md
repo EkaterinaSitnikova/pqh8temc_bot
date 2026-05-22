@@ -40,6 +40,12 @@ python bot.py
 
 Бот развернут на VPS `186.246.45.66` и запускается через `systemd`.
 
+GitHub-репозиторий:
+
+```text
+https://github.com/EkaterinaSitnikova/pqh8temc_bot
+```
+
 Подключение с этого Mac:
 
 ```bash
